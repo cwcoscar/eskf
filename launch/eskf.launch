@@ -1,0 +1,8 @@
+<!---->
+<launch>
+  <arg name="fusion_type" value="0"/> <!-- 0:uwb, 1:ublox, 2:novatel-->>
+  
+  <node name="eskf" pkg="eskf" type="main_eskf" output="screen">
+    <param name="fusion_type" value="$(arg fusion_type)"/>
+  </node>
+</launch>

@@ -1,0 +1,135 @@
+#ifndef ESKF_H_
+#define ESKF_H_
+
+#include "ros/ros.h"
+#include <sensor_msgs/NavSatFix.h>
+#include <geometry_msgs/TwistWithCovarianceStamped.h>
+#include <novatel_gps_msgs/Inspva.h>
+#include <novatel_gps_msgs/Inscov.h>
+#include <ublox_msgs/NavATT.h>
+#include <uwb_ins_eskf_msgs/InsFIX.h>
+#include <uwb_ins_eskf_msgs/uwbFIX.h>
+#include <uwb_ins_eskf_msgs/fusionFIX.h>
+
+#define _USE_MATH_DEFINES
+#include <cmath>
+#include <Eigen/Dense>
+
+#define EARTH_SEMIMAJOR ((double)6378137) // meter
+#define EARTH_ROTATION_RATE ((double)0.00007292115) // rad/s
+#define FLATTENING ((double)1/298.25722563)
+#define ECCENTRICITY sqrt(FLATTENING*(2-FLATTENING))
+#define DEG_TO_RAD M_PI/180
+#define RAD_TO_DEG 180/M_PI
+
+namespace ESKF{
+
+    typedef struct eskf_config{
+        int fusion_type;
+        int novatel_count = 0;
+        bool ublox_fix_flag = false;
+        bool ublox_vel_flag = false;
+        bool ublox_att_flag = false;
+        bool novatel_cov_flag = false;
+        bool ins_flag = false;
+    }config;
+
+    typedef struct Error_state{
+        Eigen::VectorXd position; // deg, deg, m
+        Eigen::VectorXd velocity; // m/s
+        Eigen::VectorXd attitude; // deg
+        Eigen::VectorXd gyroscope; // rad/s2
+        Eigen::VectorXd accelerometer; // m/s2
+    }error_state;
+
+    typedef struct ESKF_variable{
+        /*"denote"
+        .T: transpose , .-1: inverse , (-): priori , (+): posteriori
+        Unit: rad / meter
+        "Formula"
+        .
+        x = Fx+Gw , E(ww.T) = Q
+        Z = Hx+v , E(vv.T) = R
+        */
+        Eigen::MatrixXd F; //state transition matrix
+        Eigen::VectorXd x; // x_k(+) : error state vector
+        Eigen::MatrixXd G; //process noise coefficient matrix
+        Eigen::MatrixXd Q; //process noise covariance matrix
+        Eigen::VectorXd Z; //measurement vector
+        Eigen::MatrixXd H; //measurement coefficient matrix
+        Eigen::MatrixXd R; //measurement noise covariance matrix
+
+        /* "Prediction"
+        x_k(-) = Theta * x_k-1(+)
+        P_k(-) = Theta * P_k-1(+) * Theta.T + G_k-1 * Q_k-1 * G_k-1.T
+        */
+        Eigen::MatrixXd x_priori; // x_k(-) : priori of error state vector
+        Eigen::MatrixXd Theta;
+        Eigen::MatrixXd P_priori; // P_k(-) : priori of error covariance
+
+        /* "Update"
+        K_k = P_k(-) * H_k.T * (H_k * P_k(-) * H_k.T).-1
+        x_k(+) = x_k(-) + K_k * (Z_k - H_k * x_k(-))
+        P_k(+) = (I - K_k * H_k) * P_k(-)
+        */
+        Eigen::MatrixXd K; // K_k : Kalman gain
+        Eigen::MatrixXd P; // P_k(+) : posteriori of error covariance
+
+
+    }eskf_variable;
+
+    class Fusion{
+        private:
+            error_state err_state_;
+            eskf_variable eskf_var_;
+            config eskf_config_;
+            ros::Publisher pub_fusion_;
+            sensor_msgs::NavSatFix ublox_fix_;
+            geometry_msgs::TwistWithCovarianceStamped ublox_vel_;
+            ublox_msgs::NavATT ublox_att_;
+            double time_interval_;
+            uwb_ins_eskf_msgs::uwbFIX uwb_fix_;
+            uwb_ins_eskf_msgs::InsFIX ins_fix_;
+            novatel_gps_msgs::Inspva novatel_fix_;
+            Eigen::Vector3d R_pos_;
+            Eigen::Vector3d R_vel_;
+            Eigen::Vector3d R_att_;
+        public:
+            // constructor
+            Fusion(ros::Publisher pub_fusion, ESKF::config eskf_config);
+
+            // Initialize
+            void Initilize_error_state();
+            void Initilize_eskf_variable();
+
+            // update data
+            void ubloxFIXcallback(const sensor_msgs::NavSatFix& msg);
+            void ubloxVELcallback(const geometry_msgs::TwistWithCovarianceStamped& msg);
+            void ubloxATTcallback(const ublox_msgs::NavATT& msg);
+            void novatelINSPVAcallback(const novatel_gps_msgs::Inspva& msg);
+            void novatelINSCOVcallback(const novatel_gps_msgs::Inscov& msg);
+            void uwbFIXcallback(const uwb_ins_eskf_msgs::uwbFIX& msg);
+            void insFIXcallback(const uwb_ins_eskf_msgs::InsFIX& msg);
+            void update_error_state();
+
+            // algorithm
+            void update_F();
+            void update_x();
+            void update_Q();
+            void update_Z();
+            void update_R();
+            void update_Theta();
+            void update_x_priori();
+            void update_P_priori();
+            void update_K();
+            void update_P();
+            void Prediction();
+            void Update();
+            void KF_algorithm();
+
+            // Result
+            void publish_fusion();
+    };
+
+}
+#endif
