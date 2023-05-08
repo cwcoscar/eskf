@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
     nh.param("fusion_type", eskf_config.fusion_type, 0);
 
     // Publishers of ins solution
-    ros::Publisher pub_ins_fix = n.advertise<eskf::fusionFix>("/fusion/fix", 1);
+    ros::Publisher pub_ins_fix = n.advertise<uwb_ins_eskf_msgs::fusionFIX>("/fusion/fix", 1);
 
     ESKF::Fusion fusion(pub_ins_fix, eskf_config);
     fusion.Initilize_error_state();

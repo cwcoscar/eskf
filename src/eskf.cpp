@@ -83,7 +83,7 @@ void Fusion::ubloxATTcallback(const ublox_msgs::NavATT& msg){
     Eigen::Vector3d R_att(msg.accPitch,msg.accRoll,msg.accHeading);
     R_att = R_att/100000*DEG_TO_RAD;
     ublox_att_ = msg;
-    c = R_att;
+    R_att_ = R_att;
     eskf_config_.ublox_att_flag = true;
     if(eskf_config_.ins_flag == true){
         if(eskf_config_.ublox_fix_flag && eskf_config_.ublox_vel_flag){
@@ -172,7 +172,7 @@ void Fusion::update_error_state(){
     else if(eskf_config_.fusion_type == 2){
         tmp(0) = novatel_fix_.latitude - ins_fix_.latitude;
         tmp(1) = novatel_fix_.longitude - ins_fix_.longitude;
-        tmp(2) = novatel_fix_.altitude - ins_fix_.altitude;
+        tmp(2) = novatel_fix_.height - ins_fix_.altitude;
         err_state_.position = tmp;
 
         tmp(0) = novatel_fix_.east_velocity - ins_fix_.velocity_e;
