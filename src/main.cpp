@@ -8,12 +8,12 @@ int main(int argc, char **argv) {
     ros::NodeHandle nh("~");
 
     // nh.param("ublox_fix_topic", ublox_fix_topic_, std::string("/ublox_f9k/fix"));
-    nh.param("fusion_type", eskf_config.fusion_type, 0);
+    nh.param("fusion_type", eskf_config.fusion_type, 2);
 
-    // Publishers of ins solution
-    ros::Publisher pub_ins_fix = n.advertise<uwb_ins_eskf_msgs::fusionFIX>("/fusion/fix", 1);
+    // Publishers of fusion solution
+    ros::Publisher pub_fusion_fix = n.advertise<uwb_ins_eskf_msgs::fusionFIX>("/fusion/fix", 1);
 
-    ESKF::Fusion fusion(pub_ins_fix, eskf_config);
+    ESKF::Fusion fusion(pub_fusion_fix, eskf_config);
     fusion.Initilize_error_state();
     fusion.Initilize_eskf_variable();
 
