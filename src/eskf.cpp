@@ -184,7 +184,7 @@ void Fusion::insFIXcallback(const uwb_ins_eskf_msgs::InsFIX& msg){
         publish_ins();
         Eigen::Vector3d now_lla(ins_fix_.latitude, ins_fix_.longitude, ins_fix_.altitude);
         Eigen::Vector3d now_att(ins_fix_.att_e, ins_fix_.att_n, ins_fix_.att_u);
-        send_tf(now_lla, now_att, "fusion");
+        send_tf(now_lla, now_att, "eskf");
         // std::cout << std::fixed << std::setprecision(2);
         // std::cout << "\033[33m" << "publish ins: " << ins_fix_.header.stamp.toSec() << "\033[0m" << std::endl;
     }
@@ -489,8 +489,8 @@ void Fusion::MNC_estimate(){
     update_r_k();
     update_s();
     update_d();
-    // std::cout << "\033[33m" << "eskf_var_.s" << std::endl << eskf_var_.s << "\033[0m" << std::endl;
-    // std::cout << "\033[33m" << "eskf_var_.d" << std::endl << eskf_var_.d << "\033[0m" << std::endl;
+    std::cout << "\033[33m" << "eskf_var_.s" << std::endl << eskf_var_.s << "\033[0m" << std::endl;
+    std::cout << "\033[33m" << "eskf_var_.d" << std::endl << eskf_var_.d << "\033[0m" << std::endl;
     R_k = (1 - eskf_var_.s*eskf_var_.d) * eskf_var_.R + eskf_var_.s*eskf_var_.d * eskf_var_.R_hat;
 
     // If last change of heading over the threshold, next R of heading is forced to be small
@@ -506,8 +506,7 @@ void Fusion::MNC_estimate(){
             R_k(i,i) == 0.01*eskf_var_.P_priori(i,i);
         }
     }
-
-    // std::cout << "\033[33m" << "R_k" << std::endl << R_k << "\033[0m" << std::endl;
+    std::cout << "\033[33m" << "R_k" << std::endl << R_k << "\033[0m" << std::endl;
     Eigen::Vector3d R_pos(R_k(0, 0), R_k(1, 1), R_k(2, 2));
     Eigen::Vector3d R_vel(R_k(3, 3), R_k(4, 4), R_k(5, 5));
     Eigen::Vector3d R_att(R_k(6, 6), R_k(7, 7), R_k(8, 8));

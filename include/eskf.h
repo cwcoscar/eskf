@@ -44,7 +44,7 @@ namespace ESKF{
         bool ins_flag = false;
         int MNC_window = 20;
         double MNC_faing_rate = 0.99;
-        int MICW_threshold_count = 10;
+        int MICW_threshold_count = 20;
         double MICW_lamda = 1.1;
         double MICW_forgetting_factor = 0.99;
     }config;
