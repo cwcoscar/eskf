@@ -3,8 +3,6 @@
 
 using namespace ESKF;
 
-Eigen::Vector3d a_b(-0.348513345960806, -0.26021251227717, 0.132337782341719);
-Eigen::Vector3d g_b(0.00710659149934062, 0.00211909908717263, -0.0000592951099686292);
 // static double random_walk_noise_vel_x = 0.0795288358707579; // (m/s^2)/(s^0.5)
 // static double random_walk_noise_vel_y = 0.084039859849866; // (m/s^2)/(s^0.5)
 // static double random_walk_noise_vel_z = 0.108319949650409; // (m/s^2)/(s^0.5)
@@ -193,30 +191,30 @@ void Fusion::insFIXcallback(const uwb_ins_eskf_msgs::InsFIX& msg){
 void Fusion::update_error_state(){
     Eigen::Vector3d tmp;
     if(eskf_config_.fusion_type == 0){
-        tmp(0) = uwb_fix_.latitude - ins_fix_.latitude;
-        tmp(1) = uwb_fix_.longitude - ins_fix_.longitude;
-        tmp(2) = uwb_fix_.altitude - ins_fix_.altitude;
+        tmp(0) = ins_fix_.latitude - uwb_fix_.latitude;
+        tmp(1) = ins_fix_.longitude - uwb_fix_.longitude;
+        tmp(2) = ins_fix_.altitude - uwb_fix_.altitude;
         err_state_.position = tmp;
 
-        tmp(0) = uwb_fix_.velocity_e - ins_fix_.velocity_e;
-        tmp(1) = uwb_fix_.velocity_n - ins_fix_.velocity_n;
-        tmp(2) = uwb_fix_.velocity_u - ins_fix_.velocity_u;
+        tmp(0) = ins_fix_.velocity_e - uwb_fix_.velocity_e;
+        tmp(1) = ins_fix_.velocity_n - uwb_fix_.velocity_n;
+        tmp(2) = ins_fix_.velocity_u - uwb_fix_.velocity_u;
         err_state_.velocity = tmp;
 
-        tmp(0) = uwb_fix_.att_e - ins_fix_.att_e;
-        tmp(1) = uwb_fix_.att_n - ins_fix_.att_n;  
-        tmp(2) = uwb_fix_.att_u - ins_fix_.att_u;
+        tmp(0) = ins_fix_.att_e - uwb_fix_.att_e;
+        tmp(1) = ins_fix_.att_n - uwb_fix_.att_n;  
+        tmp(2) = ins_fix_.att_u - uwb_fix_.att_u;
         err_state_.attitude = tmp;
     }
     else if(eskf_config_.fusion_type == 1){
-        tmp(0) = ublox_fix_.latitude - ins_fix_.latitude;
-        tmp(1) = ublox_fix_.longitude - ins_fix_.longitude;
-        tmp(2) = ublox_fix_.altitude - ins_fix_.altitude;
+        tmp(0) = ins_fix_.latitude - ublox_fix_.latitude;
+        tmp(1) = ins_fix_.longitude - ublox_fix_.longitude;
+        tmp(2) = ins_fix_.altitude - ublox_fix_.altitude;
         err_state_.position = tmp;
 
-        tmp(0) = ublox_vel_.twist.twist.linear.x - ins_fix_.velocity_e;
-        tmp(1) = ublox_vel_.twist.twist.linear.y - ins_fix_.velocity_n;
-        tmp(2) = ublox_vel_.twist.twist.linear.z - ins_fix_.velocity_u;
+        tmp(0) = ins_fix_.velocity_e - ublox_vel_.twist.twist.linear.x;
+        tmp(1) = ins_fix_.velocity_n - ublox_vel_.twist.twist.linear.y;
+        tmp(2) = ins_fix_.velocity_u - ublox_vel_.twist.twist.linear.z;
         err_state_.velocity = tmp;
 
         Eigen::Vector3d att(ublox_att_.roll, ublox_att_.pitch, ublox_att_.heading);
@@ -231,20 +229,20 @@ void Fusion::update_error_state(){
                 att(i) = att(i) - 360;
             }
         }
-        tmp(0) = att(0) - ins_fix_.att_e;
-        tmp(1) = att(1) - ins_fix_.att_n;  
-        tmp(2) = att(2) - ins_fix_.att_u;
+        tmp(0) = ins_fix_.att_e - att(0);
+        tmp(1) = ins_fix_.att_n - att(1);  
+        tmp(2) = ins_fix_.att_u - att(2);
         err_state_.attitude = tmp;
     }
     else if(eskf_config_.fusion_type == 2){
-        tmp(0) = novatel_fix_.latitude - ins_fix_.latitude;
-        tmp(1) = novatel_fix_.longitude - ins_fix_.longitude;
-        tmp(2) = novatel_fix_.height - ins_fix_.altitude;
+        tmp(0) = ins_fix_.latitude - novatel_fix_.latitude;
+        tmp(1) = ins_fix_.longitude - novatel_fix_.longitude;
+        tmp(2) = ins_fix_.altitude - novatel_fix_.height;
         err_state_.position = tmp;
 
-        tmp(0) = novatel_fix_.east_velocity - ins_fix_.velocity_e;
-        tmp(1) = novatel_fix_.north_velocity - ins_fix_.velocity_n;
-        tmp(2) = novatel_fix_.up_velocity - ins_fix_.velocity_u;
+        tmp(0) = ins_fix_.velocity_e - novatel_fix_.east_velocity;
+        tmp(1) = ins_fix_.velocity_n - novatel_fix_.north_velocity;
+        tmp(2) = ins_fix_.velocity_u - novatel_fix_.up_velocity;
         err_state_.velocity = tmp;
 
         Eigen::Vector3d att(novatel_fix_.roll, novatel_fix_.pitch, novatel_fix_.azimuth);
@@ -259,9 +257,9 @@ void Fusion::update_error_state(){
                 att(i) = att(i) - 360;
             }
         }
-        tmp(0) = att(0) - ins_fix_.att_e;
-        tmp(1) = att(1) - ins_fix_.att_n;  
-        tmp(2) = att(2) - ins_fix_.att_u;
+        tmp(0) = ins_fix_.att_e - att(0);
+        tmp(1) = ins_fix_.att_n - att(1);  
+        tmp(2) = ins_fix_.att_u - att(2);
         err_state_.attitude = tmp;
 
         // std::cout << "\033[33m" << "position" << std::endl << err_state_.position << "\033[0m" << std::endl;
@@ -271,9 +269,9 @@ void Fusion::update_error_state(){
         // std::cout << "\033[33m" << "ini_err_attitude" << std::endl << err_state_.attitude << "\033[0m" << std::endl;
     }
 
-    err_state_.gyroscope = g_b;
+    // err_state_.gyroscope = g_b;
 
-    err_state_.accelerometer = a_b;
+    // err_state_.accelerometer = a_b;
 }
 
 // algorithm
@@ -290,9 +288,9 @@ void Fusion::update_F(){
     eskf_var_.F(5,6) = ins_fix_.f_n;
     eskf_var_.F(5,7) = -ins_fix_.f_e;
     //attitude
-    eskf_var_.F(6,4) = 1/(earth_radius_along_prime_vertical(ins_fix_.latitude*DEG_TO_RAD)+ins_fix_.altitude);
-    eskf_var_.F(7,3) = -1/(earth_radius_along_prime_vertical(ins_fix_.latitude*DEG_TO_RAD)+ins_fix_.altitude);
-    eskf_var_.F(8,3) = -(tan(ins_fix_.latitude*DEG_TO_RAD))/(earth_radius_along_prime_vertical(ins_fix_.latitude*DEG_TO_RAD)+ins_fix_.altitude);
+    eskf_var_.F(6,3) = -1/(earth_radius_along_prime_vertical(ins_fix_.latitude*DEG_TO_RAD)+ins_fix_.altitude);
+    eskf_var_.F(7,4) = 1/(earth_radius_along_prime_vertical(ins_fix_.latitude*DEG_TO_RAD)+ins_fix_.altitude);
+    eskf_var_.F(8,3) = tan(ins_fix_.latitude*DEG_TO_RAD)/(earth_radius_along_prime_vertical(ins_fix_.latitude*DEG_TO_RAD)+ins_fix_.altitude);
     // std::cout << "\033[33m" << "eskf_var_.F" << std::endl << eskf_var_.F << "\033[0m" << std::endl;
 }
 void Fusion::update_Q(){
@@ -536,12 +534,12 @@ void Fusion::send_tf(){
     tf::Transform transform;
     tf::Quaternion current_q;
     Eigen::Vector3d nckuee(NCKUEE_LATITUDE, NCKUEE_LONGITUDE, NCKUEE_HEIGHT);
-    Eigen::Vector3d now_lla(ins_fix_.latitude + eskf_var_.x(0)*RAD_TO_DEG, 
-                            ins_fix_.longitude + eskf_var_.x(1)*RAD_TO_DEG, 
-                            ins_fix_.altitude + eskf_var_.x(2));
-    Eigen::Vector3d now_att(ins_fix_.att_e*DEG_TO_RAD + eskf_var_.x(6), 
-                            ins_fix_.att_n*DEG_TO_RAD + eskf_var_.x(7), 
-                            ins_fix_.att_u*DEG_TO_RAD + eskf_var_.x(8));
+    Eigen::Vector3d now_lla(ins_fix_.latitude - eskf_var_.x(0)*RAD_TO_DEG, 
+                            ins_fix_.longitude - eskf_var_.x(1)*RAD_TO_DEG, 
+                            ins_fix_.altitude - eskf_var_.x(2));
+    Eigen::Vector3d now_att(ins_fix_.att_e*DEG_TO_RAD - eskf_var_.x(6), 
+                            ins_fix_.att_n*DEG_TO_RAD - eskf_var_.x(7), 
+                            ins_fix_.att_u*DEG_TO_RAD - eskf_var_.x(8));
     ros::Time now = ros::Time::now();
     
     Eigen::Vector3d now_enu = coordinate_mat_transformation::lla2enu(now_lla, nckuee);
@@ -577,16 +575,16 @@ void Fusion::publish_fusion(){
 
     msg.header.stamp = now;
     msg.header.frame_id = "local";
-    msg.latitude = ins_fix_.latitude + eskf_var_.x(0)*RAD_TO_DEG;
-    msg.longitude = ins_fix_.longitude + eskf_var_.x(1)*RAD_TO_DEG;
-    msg.altitude = ins_fix_.altitude + eskf_var_.x(2);
-    msg.velocity_e = ins_fix_.velocity_e + eskf_var_.x(3);
-    msg.velocity_n = ins_fix_.velocity_n + eskf_var_.x(4);
-    msg.velocity_u = ins_fix_.velocity_u + eskf_var_.x(5);
+    msg.latitude = ins_fix_.latitude - eskf_var_.x(0)*RAD_TO_DEG;
+    msg.longitude = ins_fix_.longitude - eskf_var_.x(1)*RAD_TO_DEG;
+    msg.altitude = ins_fix_.altitude - eskf_var_.x(2);
+    msg.velocity_e = ins_fix_.velocity_e - eskf_var_.x(3);
+    msg.velocity_n = ins_fix_.velocity_n - eskf_var_.x(4);
+    msg.velocity_u = ins_fix_.velocity_u - eskf_var_.x(5);
     // 0 ~ 360 -> -180 ~ 180
-    Eigen::Vector3d att(ins_fix_.att_e + eskf_var_.x(6)*RAD_TO_DEG, 
-                        ins_fix_.att_n + eskf_var_.x(7)*RAD_TO_DEG, 
-                        ins_fix_.att_u + eskf_var_.x(8)*RAD_TO_DEG);
+    Eigen::Vector3d att(ins_fix_.att_e - eskf_var_.x(6)*RAD_TO_DEG, 
+                        ins_fix_.att_n - eskf_var_.x(7)*RAD_TO_DEG, 
+                        ins_fix_.att_u - eskf_var_.x(8)*RAD_TO_DEG);
     for (int i = 0; i < 3; i++){
         if (att(i) > 180 && att(i) < 360){
             att(i) = att(i) - 360;
