@@ -63,6 +63,7 @@ void Fusion::ubloxFIXcallback(const sensor_msgs::NavSatFix& msg){
     ublox_fix_ = msg;
     R_pos_ = R_pos;
     eskf_config_.ublox_fix_flag = true;
+    eskf_config_.transform2baselink = false;
     if(eskf_config_.ins_flag == true){
         if(eskf_config_.ublox_vel_flag && eskf_config_.ublox_att_flag){
             eskf_config_.ublox_fix_flag = eskf_config_.ublox_vel_flag = eskf_config_.ublox_att_flag = false;
@@ -129,6 +130,7 @@ void Fusion::novatelINSPVAcallback(const novatel_gps_msgs::Inspva& msg){
             // std::cout << "\033[33m" << "novatel.toSec(): " << std::endl << msg.header.stamp.toSec() << "\033[0m" << std::endl;
             // std::cout << "\033[33m" << "ins_fix_.toSec(): " << std::endl << ins_fix_.header.stamp.toSec() << "\033[0m" << std::endl;
             novatel_fix_ = msg;
+            eskf_config_.transform2baselink = false;
             KF_algorithm();
             publish_fusion();
             send_tf();
@@ -153,6 +155,7 @@ void Fusion::novatelINSCOVcallback(const novatel_gps_msgs::Inscov& msg){
 void Fusion::uwbFIXcallback(const uwb_ins_eskf_msgs::uwbFIX& msg){
     uwb_fix_ = msg;
     eskf_config_.uwb_flag = true;
+    eskf_config_.transform2baselink = false;
     // initialize MNC
     static bool ini_cov = false;
     if(!ini_cov){
@@ -182,11 +185,64 @@ void Fusion::insFIXcallback(const uwb_ins_eskf_msgs::InsFIX& msg){
         publish_ins();
         Eigen::Vector3d now_lla(ins_fix_.latitude, ins_fix_.longitude, ins_fix_.altitude);
         Eigen::Vector3d now_att(ins_fix_.att_e, ins_fix_.att_n, ins_fix_.att_u);
-        send_tf(now_lla, now_att, "eskf");
+        send_tf(now_lla, now_att, "eskf_baselink");
         // std::cout << std::fixed << std::setprecision(2);
         // std::cout << "\033[33m" << "publish ins: " << ins_fix_.header.stamp.toSec() << "\033[0m" << std::endl;
     }
     eskf_config_.uwb_flag = false;
+}
+void Fusion::transform2baselink(){
+    Eigen::Vector3d ref_lla(NCKUEE_LATITUDE, NCKUEE_LONGITUDE, NCKUEE_HEIGHT);
+    static Eigen::Vector3d r_b;
+    Eigen::Vector3d r_l;
+    Eigen::Vector3d att_l;
+    
+    if(eskf_config_.fusion_type == 0){
+        r_b = eskf_config_.uwb_b;
+        Eigen::Vector3d r(uwb_fix_.latitude,uwb_fix_.longitude,uwb_fix_.altitude);
+        r_l = r;
+        Eigen::Vector3d att(uwb_fix_.att_e,uwb_fix_.att_n,uwb_fix_.att_u);
+        att_l = att;
+    }
+    else if(eskf_config_.fusion_type == 1){
+        r_b = eskf_config_.gnss_b;
+        Eigen::Vector3d r(ublox_fix_.latitude, ublox_fix_.longitude, ublox_fix_.altitude);
+        r_l = r;
+        Eigen::Vector3d att(ublox_att_.pitch, ublox_att_.roll, 360-ublox_att_.heading);
+        att_l = att;
+    }
+    else if (eskf_config_.fusion_type == 2){
+        r_b = eskf_config_.gnss_b;
+        Eigen::Vector3d r(novatel_fix_.latitude,novatel_fix_.longitude,novatel_fix_.height);
+        r_l = r;
+        Eigen::Vector3d att(novatel_fix_.pitch, novatel_fix_.roll, 360-novatel_fix_.azimuth);
+        att_l = att;
+    }
+    att_l = (att_l/180) * M_PI;
+    Eigen::Matrix3d R_b_l = coordinate_mat_transformation::Rotation_matrix(att_l);
+    Eigen::Vector3d r_enu = coordinate_mat_transformation::lla2enu(r_l ,ref_lla);
+    Eigen::Vector3d baselink_enu = r_enu - R_b_l*r_b;
+    Eigen::VectorXd baselink_lla = coordinate_mat_transformation::enu2Geodetic(baselink_enu ,ref_lla);
+
+    // Update baselink position
+    if(eskf_config_.fusion_type == 0){
+        uwb_fix_.latitude = baselink_lla(0);
+        uwb_fix_.longitude = baselink_lla(1);
+        uwb_fix_.altitude = baselink_lla(2);
+    }
+    else if(eskf_config_.fusion_type == 1){
+        ublox_fix_.latitude = baselink_lla(0);
+        ublox_fix_.longitude = baselink_lla(1);
+        ublox_fix_.altitude = baselink_lla(2);
+    }
+    else if (eskf_config_.fusion_type == 2){
+        novatel_fix_.latitude = baselink_lla(0);
+        novatel_fix_.longitude = baselink_lla(1);
+        novatel_fix_.height = baselink_lla(2);
+    }
+    eskf_config_.transform2baselink = true;
+    // std::cout << "r_enu: " << std::endl << r_enu << std::endl;
+    // std::cout << "baselink_enu: " << std::endl << baselink_enu << std::endl;
 }
 void Fusion::update_error_state(){
     Eigen::Vector3d tmp;
@@ -223,7 +279,7 @@ void Fusion::update_error_state(){
         double temp = att(1);
         att(1) = att(0);
         att(0) = temp;
-        // 0 ~ 2PI -> -PI ~ PI
+        // 0 ~ 360 -> -180 ~ 180
         for (int i = 0; i < 3; i++){
             if (att(i) > 180 && att(i) < 360){
                 att(i) = att(i) - 360;
@@ -251,7 +307,7 @@ void Fusion::update_error_state(){
         double temp = att(1);
         att(1) = att(0);
         att(0) = temp;
-        // 0 ~ 2PI -> -PI ~ PI
+        // 0 ~ 360 -> -180 ~ 180
         for (int i = 0; i < 3; i++){
             if (att(i) > 180 && att(i) < 360){
                 att(i) = att(i) - 360;
@@ -487,8 +543,8 @@ void Fusion::MNC_estimate(){
     update_r_k();
     update_s();
     update_d();
-    std::cout << "\033[33m" << "eskf_var_.s" << std::endl << eskf_var_.s << "\033[0m" << std::endl;
-    std::cout << "\033[33m" << "eskf_var_.d" << std::endl << eskf_var_.d << "\033[0m" << std::endl;
+    // std::cout << "\033[33m" << "eskf_var_.s" << std::endl << eskf_var_.s << "\033[0m" << std::endl;
+    // std::cout << "\033[33m" << "eskf_var_.d" << std::endl << eskf_var_.d << "\033[0m" << std::endl;
     R_k = (1 - eskf_var_.s*eskf_var_.d) * eskf_var_.R + eskf_var_.s*eskf_var_.d * eskf_var_.R_hat;
 
     // If last change of heading over the threshold, next R of heading is forced to be small
@@ -504,7 +560,7 @@ void Fusion::MNC_estimate(){
             R_k(i,i) == 0.01*eskf_var_.P_priori(i,i);
         }
     }
-    std::cout << "\033[33m" << "R_k" << std::endl << R_k << "\033[0m" << std::endl;
+    // std::cout << "\033[33m" << "R_k" << std::endl << R_k << "\033[0m" << std::endl;
     Eigen::Vector3d R_pos(R_k(0, 0), R_k(1, 1), R_k(2, 2));
     Eigen::Vector3d R_vel(R_k(3, 3), R_k(4, 4), R_k(5, 5));
     Eigen::Vector3d R_att(R_k(6, 6), R_k(7, 7), R_k(8, 8));
@@ -519,6 +575,10 @@ void Fusion::Update(){
     update_P();
 }
 void Fusion::KF_algorithm(){
+    // Check if position is tranform to baselink
+    if(!eskf_config_.transform2baselink){
+        transform2baselink();
+    }
     update_error_state();
     update_F();
     update_Q();
@@ -550,7 +610,7 @@ void Fusion::send_tf(){
 
     transform.setOrigin(tf::Vector3(now_enu(0), now_enu(1), now_enu(2)));
     transform.setRotation(current_q);
-    br_.sendTransform(tf::StampedTransform(transform, now, "/map", "eskf"));
+    br_.sendTransform(tf::StampedTransform(transform, now, "/map", "eskf_baselink"));
 }
 void Fusion::send_tf(Eigen::Vector3d now_lla, Eigen::Vector3d now_att, std::string frame){ //lla(deg deg m) att(deg, deg, deg)
     tf::Transform transform;

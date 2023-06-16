@@ -42,6 +42,9 @@ namespace ESKF{
         bool novatel_cov_flag = false;
         bool uwb_flag = false;
         bool ins_flag = false;
+        Eigen::Vector3d gnss_b;
+        Eigen::Vector3d uwb_b;
+        bool transform2baselink = false;
         int MNC_window = 20;
         double MNC_faing_rate = 0.99;
         int MICW_threshold_count = 20;
@@ -143,6 +146,7 @@ namespace ESKF{
             void uwbFIXcallback(const uwb_ins_eskf_msgs::uwbFIX& msg);
             void insFIXcallback(const uwb_ins_eskf_msgs::InsFIX& msg);
             void update_error_state();
+            void transform2baselink();
 
             // algorithm
             void update_F();

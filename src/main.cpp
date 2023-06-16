@@ -9,9 +9,15 @@ int main(int argc, char **argv) {
 
     // nh.param("ublox_fix_topic", ublox_fix_topic_, std::string("/ublox_f9k/fix"));
     nh.param("fusion_type", eskf_config.fusion_type, 2);
+    nh.param("antenna_x", eskf_config.gnss_b(0), 0.00);
+    nh.param("antenna_y", eskf_config.gnss_b(1), 0.25);
+    nh.param("antenna_z", eskf_config.gnss_b(2), 0.43);
+    nh.param("A0_x", eskf_config.uwb_b(0), 0.00);
+    nh.param("A0_y", eskf_config.uwb_b(1), 0.05);
+    nh.param("A0_z", eskf_config.uwb_b(2), 0.43);
 
     // Publishers of fusion solution
-    ros::Publisher pub_fusion_fix = n.advertise<uwb_ins_eskf_msgs::fusionFIX>("/fusion/fix", 1);
+    ros::Publisher pub_fusion_fix = n.advertise<uwb_ins_eskf_msgs::fusionFIX>("/fusion/baselink/fix", 1);
 
     ESKF::Fusion fusion(pub_fusion_fix, eskf_config);
     fusion.Initilize_error_state();

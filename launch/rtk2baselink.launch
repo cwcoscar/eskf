@@ -1,0 +1,15 @@
+  <!---->
+<launch>
+  <arg name="rtk_topic" value="/novatel"/>
+  <!-- GNSS Antenna in b-frame-->
+  <arg name="antenna_x" value="0.00"/>
+  <arg name="antenna_y" value="0.25"/>
+  <arg name="antenna_z" value="0.43"/>
+  
+  <node name="rtk2baselink" pkg="eskf" type="rtk2baselink" output="screen">
+    <param name="rtk_topic" value="$(arg rtk_topic)"/>
+    <param name="antenna_x" value="$(arg antenna_x)" type="double"/>
+    <param name="antenna_y" value="$(arg antenna_y)" type="double"/>
+    <param name="antenna_z" value="$(arg antenna_z)" type="double"/>
+  </node>
+</launch>

@@ -30,6 +30,7 @@ catkin_package(
  message_runtime
  sensor_msgs
  uwb_ins_eskf_msgs
+ novatel_gps_msgs
 )
 
 ###########
@@ -48,12 +49,21 @@ add_dependencies(main_eskf
   ${catkin_EXPORTED_TARGETS}
 )
 
+add_executable(rtk2baselink src/rtk2baselink.cpp)
+
+target_link_libraries(rtk2baselink ${catkin_LIBRARIES})
+
+add_dependencies(rtk2baselink
+  ${catkin_EXPORTED_TARGETS}
+)
+
 #############
 ## Install ##
 #############
 
 install(TARGETS
 main_eskf
+rtk2baselink
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
