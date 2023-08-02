@@ -14,7 +14,7 @@ static double random_walk_noise_vel_y = 1; // (m/s^2)/(s^0.5)
 static double random_walk_noise_vel_z = 1; // (m/s^2)/(s^0.5)
 static double random_walk_noise_att_x = 1; // (rad)/(s^0.5)
 static double random_walk_noise_att_y = 1; // (rad)/(s^0.5)
-static double random_walk_noise_att_z = 1; // (rad)/(s^0.5)
+static double random_walk_noise_att_z = 0.1; // (rad)/(s^0.5)
 
 inline double earth_radius_along_meridian(double lat_rad){
     double m = (EARTH_SEMIMAJOR*(1-ECCENTRICITY*ECCENTRICITY))/pow(1-pow(ECCENTRICITY*sin(lat_rad),2),1.5);
@@ -27,7 +27,7 @@ inline double earth_radius_along_prime_vertical(double lat_rad){
 
 Fusion::Fusion(ros::Publisher pub_fusion, ESKF::config eskf_config):pub_fusion_(pub_fusion), eskf_config_(eskf_config){};
 
-// Initialize
+/* Initialize */
 void Fusion::Initilize_error_state(){
     Eigen::Vector3d zero(0,0,0);
     err_state_.position = zero;
@@ -57,7 +57,7 @@ void Fusion::Initilize_eskf_variable(){
     eskf_var_.P = Eigen::MatrixXd::Zero(15,15);
 }
 
-// update data
+/* update data */
 void Fusion::ubloxFIXcallback(const sensor_msgs::NavSatFix& msg){
     Eigen::Vector3d R_pos(msg.position_covariance[0],msg.position_covariance[4],msg.position_covariance[8]);
     ublox_fix_ = msg;
@@ -71,7 +71,7 @@ void Fusion::ubloxFIXcallback(const sensor_msgs::NavSatFix& msg){
             KF_algorithm();
             publish_fusion();
             send_tf();
-            // Send ublox tf
+            /* Send ublox tf */
             Eigen::Vector3d now_lla(ublox_fix_.latitude, ublox_fix_.longitude, ublox_fix_.altitude);
             Eigen::Vector3d now_att(ublox_att_.pitch, ublox_att_.roll, -ublox_att_.heading);
             send_tf(now_lla, now_att, "ublox");
@@ -91,7 +91,7 @@ void Fusion::ubloxVELcallback(const geometry_msgs::TwistWithCovarianceStamped& m
             KF_algorithm();
             publish_fusion();
             send_tf();
-            // Send ublox tf
+            /* Send ublox tf */
             Eigen::Vector3d now_lla(ublox_fix_.latitude, ublox_fix_.longitude, ublox_fix_.altitude);
             Eigen::Vector3d now_att(ublox_att_.pitch, ublox_att_.roll, -ublox_att_.heading);
             send_tf(now_lla, now_att, "ublox");
@@ -112,7 +112,7 @@ void Fusion::ubloxATTcallback(const ublox_msgs::NavATT& msg){
             KF_algorithm();
             publish_fusion();
             send_tf();
-            // Send ublox tf
+            /* Send ublox tf */
             Eigen::Vector3d now_lla(ublox_fix_.latitude, ublox_fix_.longitude, ublox_fix_.altitude);
             Eigen::Vector3d now_att(ublox_att_.pitch, ublox_att_.roll, -ublox_att_.heading);
             send_tf(now_lla, now_att, "ublox");
@@ -134,7 +134,7 @@ void Fusion::novatelINSPVAcallback(const novatel_gps_msgs::Inspva& msg){
             KF_algorithm();
             publish_fusion();
             send_tf();
-            // Send novatel tf
+            /* Send novatel tf */
             Eigen::Vector3d now_lla(novatel_fix_.latitude, novatel_fix_.longitude, novatel_fix_.height);
             Eigen::Vector3d now_att(novatel_fix_.pitch, novatel_fix_.roll, -novatel_fix_.azimuth);
             send_tf(now_lla, now_att, "novatel");
@@ -156,13 +156,13 @@ void Fusion::uwbFIXcallback(const uwb_ins_eskf_msgs::uwbFIX& msg){
     uwb_fix_ = msg;
     eskf_config_.uwb_flag = true;
     eskf_config_.transform2baselink = false;
-    // initialize MNC
+    /* Initialize MNC */
     static bool ini_cov = false;
     if(!ini_cov){
-        double cov = 0.001;
-        Eigen::Vector3d R_pos(cov,cov,10*cov);
-        Eigen::Vector3d R_vel(cov,cov,10*cov);
-        Eigen::Vector3d R_att(cov,cov,cov);
+        double cov = 0.00001;
+        Eigen::Vector3d R_pos(cov,cov,cov);
+        Eigen::Vector3d R_vel(cov,cov,cov);
+        Eigen::Vector3d R_att(cov,cov,1);
         R_pos_ = R_pos;
         R_vel_ = R_vel;
         R_att_ = R_att;
@@ -186,8 +186,6 @@ void Fusion::insFIXcallback(const uwb_ins_eskf_msgs::InsFIX& msg){
         Eigen::Vector3d now_lla(ins_fix_.latitude, ins_fix_.longitude, ins_fix_.altitude);
         Eigen::Vector3d now_att(ins_fix_.att_e, ins_fix_.att_n, ins_fix_.att_u);
         send_tf(now_lla, now_att, "eskf_baselink");
-        // std::cout << std::fixed << std::setprecision(2);
-        // std::cout << "\033[33m" << "publish ins: " << ins_fix_.header.stamp.toSec() << "\033[0m" << std::endl;
     }
     eskf_config_.uwb_flag = false;
 }
@@ -224,7 +222,7 @@ void Fusion::transform2baselink(){
     Eigen::Vector3d baselink_enu = r_enu - R_b_l*r_b;
     Eigen::VectorXd baselink_lla = coordinate_mat_transformation::enu2Geodetic(baselink_enu ,ref_lla);
 
-    // Update baselink position
+    /* Update baselink position */
     if(eskf_config_.fusion_type == 0){
         uwb_fix_.latitude = baselink_lla(0);
         uwb_fix_.longitude = baselink_lla(1);
@@ -274,12 +272,12 @@ void Fusion::update_error_state(){
         err_state_.velocity = tmp;
 
         Eigen::Vector3d att(ublox_att_.roll, ublox_att_.pitch, ublox_att_.heading);
-        // NED -> ENU
+        /* NED -> ENU */
         att(2) = 360 - att(2);
         double temp = att(1);
         att(1) = att(0);
         att(0) = temp;
-        // 0 ~ 360 -> -180 ~ 180
+        /* 0 ~ 360 -> -180 ~ 180 */
         for (int i = 0; i < 3; i++){
             if (att(i) > 180 && att(i) < 360){
                 att(i) = att(i) - 360;
@@ -302,12 +300,12 @@ void Fusion::update_error_state(){
         err_state_.velocity = tmp;
 
         Eigen::Vector3d att(novatel_fix_.roll, novatel_fix_.pitch, novatel_fix_.azimuth);
-        // NED -> ENU
+        /* NED -> ENU */
         att(2) = 360 - att(2);
         double temp = att(1);
         att(1) = att(0);
         att(0) = temp;
-        // 0 ~ 360 -> -180 ~ 180
+        /* 0 ~ 360 -> -180 ~ 180 */
         for (int i = 0; i < 3; i++){
             if (att(i) > 180 && att(i) < 360){
                 att(i) = att(i) - 360;
@@ -324,26 +322,24 @@ void Fusion::update_error_state(){
         // std::cout << "\033[33m" << "ini_gnss_attitude" << std::endl << err_state_.attitude << "\033[0m" << std::endl;
         // std::cout << "\033[33m" << "ini_err_attitude" << std::endl << err_state_.attitude << "\033[0m" << std::endl;
     }
-
     // err_state_.gyroscope = g_b;
-
     // err_state_.accelerometer = a_b;
 }
 
-// algorithm
+/* Algorithm */
 void Fusion::update_F(){
-    //position
+    /* position */
     eskf_var_.F(0,4) = 1/(earth_radius_along_meridian(ins_fix_.latitude*DEG_TO_RAD)+ins_fix_.altitude);
     eskf_var_.F(1,3) = 1/((earth_radius_along_prime_vertical(ins_fix_.latitude*DEG_TO_RAD)+ins_fix_.altitude)*cos(ins_fix_.latitude*DEG_TO_RAD));
     eskf_var_.F(2,5) = 1;
-    //velocity
+    /* velocity */
     eskf_var_.F(3,7) = ins_fix_.f_u;
     eskf_var_.F(3,8) = -ins_fix_.f_n;
     eskf_var_.F(4,6) = -ins_fix_.f_u;
     eskf_var_.F(4,8) = ins_fix_.f_e;
     eskf_var_.F(5,6) = ins_fix_.f_n;
     eskf_var_.F(5,7) = -ins_fix_.f_e;
-    //attitude
+    /* attitude */
     eskf_var_.F(6,3) = -1/(earth_radius_along_prime_vertical(ins_fix_.latitude*DEG_TO_RAD)+ins_fix_.altitude);
     eskf_var_.F(7,4) = 1/(earth_radius_along_prime_vertical(ins_fix_.latitude*DEG_TO_RAD)+ins_fix_.altitude);
     eskf_var_.F(8,3) = tan(ins_fix_.latitude*DEG_TO_RAD)/(earth_radius_along_prime_vertical(ins_fix_.latitude*DEG_TO_RAD)+ins_fix_.altitude);
@@ -351,15 +347,17 @@ void Fusion::update_F(){
 }
 void Fusion::update_Q(){
     double time_interval = time_interval_;
-    // position
+    // std::cout << "\033[33m" << "time_interval" << std::endl << time_interval << "\033[0m" << std::endl;
+    /* position */
+    if (time_interval < 0.001) time_interval = 0.02;
     eskf_var_.Q(0,0) = pow(random_walk_noise_vel_x,2)*time_interval+pow(random_walk_noise_att_x,2)*time_interval;
     eskf_var_.Q(1,1) = pow(random_walk_noise_vel_y,2)*time_interval+pow(random_walk_noise_att_y,2)*time_interval;
     eskf_var_.Q(2,2) = pow(random_walk_noise_vel_z,2)*time_interval+pow(random_walk_noise_att_z,2)*time_interval;
-    // velocity
+    /* velocity */
     eskf_var_.Q(3,3) = pow(random_walk_noise_vel_x,2)*time_interval;
     eskf_var_.Q(4,4) = pow(random_walk_noise_vel_y,2)*time_interval;
     eskf_var_.Q(5,5) = pow(random_walk_noise_vel_z,2)*time_interval;
-    // attitude
+    /* attitude */
     eskf_var_.Q(6,6) = pow(random_walk_noise_att_x,2)*time_interval;
     eskf_var_.Q(7,7) = pow(random_walk_noise_att_y,2)*time_interval;
     eskf_var_.Q(8,8) = pow(random_walk_noise_att_z,2)*time_interval;
@@ -368,16 +366,16 @@ void Fusion::update_Q(){
 }
 
 void Fusion::update_Z(){
-    //position
+    /* position */
     eskf_var_.Z(0) = err_state_.position(0)*DEG_TO_RAD;
     eskf_var_.Z(1) = err_state_.position(1)*DEG_TO_RAD;
     eskf_var_.Z(2) = err_state_.position(2);
-    //velocity
+    /* velocity */
     eskf_var_.Z(3) = err_state_.velocity(0);
     eskf_var_.Z(4) = err_state_.velocity(1);
     eskf_var_.Z(5) = err_state_.velocity(2);
-    //attitude
-    // 0 ~ 360 -> -180 ~ 180
+    /* attitude */
+    /* 0 ~ 360 -> -180 ~ 180 */
     for (int i = 0; i < 3; i++){
         if (err_state_.attitude(i) > 180 && err_state_.attitude(i) < 360){
             err_state_.attitude(i) = err_state_.attitude(i) - 360;
@@ -390,15 +388,15 @@ void Fusion::update_Z(){
 }
 
 void Fusion::update_R(){
-    // position
+    /* position */
     eskf_var_.R(0,0) = R_pos_(0);
     eskf_var_.R(1,1) = R_pos_(1);
     eskf_var_.R(2,2) = R_pos_(2);
-    // velocity
+    /* velocity */
     eskf_var_.R(3,3) = R_vel_(0);
     eskf_var_.R(4,4) = R_vel_(1);
     eskf_var_.R(5,5) = R_vel_(2);
-    // attitude
+    /* attitude */
     eskf_var_.R(6,6) = R_att_(0);
     eskf_var_.R(7,7) = R_att_(1);
     eskf_var_.R(8,8) = R_att_(2);
@@ -417,7 +415,9 @@ void Fusion::update_x_priori(){
 }
 void Fusion::update_P_priori(){
     eskf_var_.P_priori = eskf_var_.Theta * eskf_var_.P * eskf_var_.Theta.transpose() + eskf_var_.G * eskf_var_.Q * eskf_var_.G.transpose();
-    // std::cout << "\033[33m" << "eskf_var_.P_priori" << std::endl << eskf_var_.P_priori << "\033[0m" << std::endl;
+    std::cout << "---" << std::endl;
+    std::cout << "\033[33m" << "eskf_var_.P_priori:" << std::endl << eskf_var_.P_priori(0,0) << std::endl << eskf_var_.P_priori(1,1) << 
+    std::endl << eskf_var_.P_priori(2,2) << std::endl << eskf_var_.P_priori(8,8) << "\033[0m" << std::endl;
 }
 void Fusion::update_inn(){
     eskf_var_.inn = eskf_var_.Z - eskf_var_.H * eskf_var_.x_priori;
@@ -439,11 +439,11 @@ void Fusion::update_S_hat_window(){
         eskf_var_.S_hat_window.push_back(tmp);
         eskf_var_.S_hat_window.erase(eskf_var_.S_hat_window.begin());
     }
-}
+} 
 void Fusion::update_S_hat(){
     Eigen::MatrixXd tmp = Eigen::MatrixXd::Zero(eskf_var_.S_hat.rows(),eskf_var_.S_hat.cols());
     double weight = 0;
-    double a = eskf_config_.MNC_faing_rate;
+    double a = eskf_config_.MNC_fading_rate;
     if(eskf_var_.S_hat_window.size() < eskf_config_.MNC_window){
         for(int i = 0; i < eskf_var_.S_hat_window.size(); i++){
             weight = pow(a,eskf_var_.S_hat_window.size()-1-i) * (1-a) / (1 - pow(a,eskf_var_.S_hat_window.size()));
@@ -470,7 +470,10 @@ void Fusion::update_R_hat(){
     eskf_var_.R_hat(6,6) = eskf_var_.R(6,6);
     eskf_var_.R_hat(7,7) = eskf_var_.R(7,7);
     for(int i = 0; i < eskf_var_.R_hat.rows(); i++){
-        if(eskf_var_.R_hat(i,i) > 4*eskf_var_.P_priori(i,i)){
+        if(i == 8 && eskf_var_.R_hat(i,i) > 40*eskf_var_.P_priori(i,i)){
+            eskf_var_.R_hat(i,i) = 40*eskf_var_.P_priori(i,i);
+        }
+        else if(eskf_var_.R_hat(i,i) > 4*eskf_var_.P_priori(i,i)){
             eskf_var_.R_hat(i,i) = 4*eskf_var_.P_priori(i,i);
         }
         else if(eskf_var_.R_hat(i,i) < 0){
@@ -478,7 +481,12 @@ void Fusion::update_R_hat(){
         }
     }
     // std::cout << "\033[33m" << "eskf_var_.inn*inn" << std::endl << eskf_var_.inn * eskf_var_.inn.transpose() << "\033[0m" << std::endl;
+    Eigen::MatrixXd inn2 = eskf_var_.inn * eskf_var_.inn.transpose();
+    std::cout << "\033[33m" << "eskf_var_.inn*inn:" << std::endl << inn2(0,0) << std::endl << inn2(1,1) << 
+    std::endl << inn2(2,2) << std::endl << inn2(8,8) << "\033[0m" << std::endl;
     // std::cout << "\033[33m" << "eskf_var_.R_hat" << std::endl << eskf_var_.R_hat << "\033[0m" << std::endl;
+    std::cout << "\033[33m" << "eskf_var_.R_hat:" << std::endl << eskf_var_.R_hat(0,0) << std::endl << eskf_var_.R_hat(1,1) << 
+    std::endl << eskf_var_.R_hat(2,2) << std::endl << eskf_var_.R_hat(8,8) << "\033[0m" << std::endl;
 }
 void Fusion::update_r_k(){
     Eigen::MatrixXd S = eskf_var_.H * eskf_var_.P_priori * eskf_var_.H.transpose() + eskf_var_.R;
@@ -521,6 +529,8 @@ void Fusion::update_K(){
     // std::cout << "\033[33m" << "(HPH+R)-1" << std::endl << (eskf_var_.H * eskf_var_.P_priori * eskf_var_.H.transpose() + eskf_var_.R).inverse() << "\033[0m" << std::endl;
     // std::cout << "\033[33m" << "(P(-)+R).-1" << std::endl << (eskf_var_.H * eskf_var_.P_priori * eskf_var_.H.transpose() + eskf_var_.R).inverse() << "\033[0m" << std::endl;
     // std::cout << "\033[33m" << "eskf_var_.K" << std::endl << eskf_var_.K << "\033[0m" << std::endl;
+    std::cout << "\033[33m" << "eskf_var_.K:" << std::endl << eskf_var_.K(0,0) << std::endl << eskf_var_.K(1,1) << 
+    std::endl << eskf_var_.K(2,2) << std::endl << eskf_var_.K(8,8) << "\033[0m" << std::endl;
 }
 void Fusion::update_x(){
     eskf_var_.x = eskf_var_.x_priori + eskf_var_.K * (eskf_var_.Z - eskf_var_.H * eskf_var_.x_priori);
@@ -547,20 +557,21 @@ void Fusion::MNC_estimate(){
     // std::cout << "\033[33m" << "eskf_var_.d" << std::endl << eskf_var_.d << "\033[0m" << std::endl;
     R_k = (1 - eskf_var_.s*eskf_var_.d) * eskf_var_.R + eskf_var_.s*eskf_var_.d * eskf_var_.R_hat;
 
-    // If last change of heading over the threshold, next R of heading is forced to be small
+    /* If last change of heading over the threshold, next R of heading is forced to be small */
     static double heading = eskf_var_.inn(8);
     if(abs(heading) > 0.7){
         R_k(8,8) = 0.1 * eskf_var_.P_priori(8,8);
     }
     heading = eskf_var_.inn(8);
-    //
-    // R must higher than minimum threshold
+    /* R must higher than minimum threshold */
     for(int i = 0; i < 8; i++){
         if(R_k(i,i) < 0.01*eskf_var_.P_priori(i,i)){
             R_k(i,i) == 0.01*eskf_var_.P_priori(i,i);
         }
     }
     // std::cout << "\033[33m" << "R_k" << std::endl << R_k << "\033[0m" << std::endl;
+    std::cout << "\033[33m" << "R_k:" << std::endl << R_k(0,0) << std::endl << R_k(1,1) << 
+    std::endl << R_k(2,2) << std::endl << R_k(8,8) << "\033[0m" << std::endl;
     Eigen::Vector3d R_pos(R_k(0, 0), R_k(1, 1), R_k(2, 2));
     Eigen::Vector3d R_vel(R_k(3, 3), R_k(4, 4), R_k(5, 5));
     Eigen::Vector3d R_att(R_k(6, 6), R_k(7, 7), R_k(8, 8));
@@ -575,7 +586,7 @@ void Fusion::Update(){
     update_P();
 }
 void Fusion::KF_algorithm(){
-    // Check if position is tranform to baselink
+    /* Check if position is tranform to baselink */
     if(!eskf_config_.transform2baselink){
         transform2baselink();
     }
@@ -628,7 +639,7 @@ void Fusion::send_tf(Eigen::Vector3d now_lla, Eigen::Vector3d now_att, std::stri
     br_.sendTransform(tf::StampedTransform(transform, now, "/map", frame));
 }
 
-// Result
+/* Result */
 void Fusion::publish_fusion(){
     uwb_ins_eskf_msgs::fusionFIX msg;
     ros::Time now = ros::Time::now();
@@ -641,7 +652,7 @@ void Fusion::publish_fusion(){
     msg.velocity_e = ins_fix_.velocity_e - eskf_var_.x(3);
     msg.velocity_n = ins_fix_.velocity_n - eskf_var_.x(4);
     msg.velocity_u = ins_fix_.velocity_u - eskf_var_.x(5);
-    // 0 ~ 360 -> -180 ~ 180
+    /* 0 ~ 360 -> -180 ~ 180 */
     Eigen::Vector3d att(ins_fix_.att_e - eskf_var_.x(6)*RAD_TO_DEG, 
                         ins_fix_.att_n - eskf_var_.x(7)*RAD_TO_DEG, 
                         ins_fix_.att_u - eskf_var_.x(8)*RAD_TO_DEG);

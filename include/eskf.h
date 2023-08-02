@@ -46,9 +46,9 @@ namespace ESKF{
         Eigen::Vector3d uwb_b;
         bool transform2baselink = false;
         int MNC_window = 20;
-        double MNC_faing_rate = 0.99;
+        double MNC_fading_rate = 0.99;
         int MICW_threshold_count = 20;
-        double MICW_lamda = 1.1;
+        double MICW_lamda = 1.0;
         double MICW_forgetting_factor = 0.99;
     }config;
 

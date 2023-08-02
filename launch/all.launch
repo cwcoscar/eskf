@@ -13,37 +13,50 @@
   <arg name="A0_y" value="0.05"/>
   <arg name="A0_z" value="0.43"/>
 
-  <!-- HOLE 9 -->
-  <arg name="T0_x" value="94316.6028646"/>
-  <arg name="T0_y" value="209345.059231"/>
-  <arg name="T0_z" value="-3894.70188964"/>
-  <arg name="T1_x" value="94360.9233912"/>
-  <arg name="T1_y" value="209341.588209"/>
-  <arg name="T1_z" value="-3899.44665929"/>
-  <arg name="T2_x" value="94376.7935465"/>
-  <arg name="T2_y" value="209309.673042"/>
-  <arg name="T2_z" value="-3902.01658183"/>
-  <arg name="T3_x" value="94338.8928115"/>
-  <arg name="T3_y" value="209298.406809"/>
-  <arg name="T3_z" value="-3899.20538561"/>
-  <!-- FRONT BUILDING -->
-  <!-- <arg name="T0_x" value="94373.649762613131"/>
-  <arg name="T0_y" value="208962.54429353986"/>
-  <arg name="T0_z" value="-3884.8914466873539"/>
-  <arg name="T1_x" value="94360.433734811988"/>
-  <arg name="T1_y" value="208981.16681582195"/>
-  <arg name="T1_z" value="-3885.1855102665577"/>
-  <arg name="T2_x" value="94337.477304781249"/>
-  <arg name="T2_y" value="208987.59769619163"/>
-  <arg name="T2_z" value="-3884.8702571280446"/>
-  <arg name="T3_x" value="94344.621897952587"/>
-  <arg name="T3_y" value="208943.87629769527"/>
-  <arg name="T3_z" value="-3884.6425924192299"/> -->
+  <!-- 0629 HOLE 9 -->
+  <arg name="T0_x" value="94315.634"/>
+  <arg name="T0_y" value="209344.404"/>
+  <arg name="T0_z" value="-3895.351"/>
+  <arg name="T1_x" value="94362.403"/>
+  <arg name="T1_y" value="209339.099"/>
+  <arg name="T1_z" value="-3900.045"/>
+  <arg name="T2_x" value="94377.951"/>
+  <arg name="T2_y" value="209308.694"/>
+  <arg name="T2_z" value="-3902.616"/>
+  <arg name="T3_x" value="94341.477"/>
+  <arg name="T3_y" value="209297.768"/>
+  <arg name="T3_z" value="-3900.177"/>
+  <!-- 0629 HOLE 6 -->
+  <!-- <arg name="T0_x" value="94035.582"/>
+  <arg name="T0_y" value="209865.398"/>
+  <arg name="T0_z" value="-3911.656"/>
+  <arg name="T1_x" value="94029.419"/>
+  <arg name="T1_y" value="209849.116"/>
+  <arg name="T1_z" value="-3910.292"/>
+  <arg name="T2_x" value="94046.241"/>
+  <arg name="T2_y" value="209818.738"/>
+  <arg name="T2_z" value="-3906.483"/>
+  <arg name="T3_x" value="94063.372"/>
+  <arg name="T3_y" value="209818.079"/>
+  <arg name="T3_z" value="-3907.566"/> -->
+  <!-- 0629 FRONT BUILDING -->
+  <!-- <arg name="T0_x" value="94370.247"/>
+  <arg name="T0_y" value="208964.464"/>
+  <arg name="T0_z" value="-3885.364"/>
+  <arg name="T1_x" value="94359.185"/>
+  <arg name="T1_y" value="208981.249"/>
+  <arg name="T1_z" value="-3885.620"/>
+  <arg name="T2_x" value="94338.973"/>
+  <arg name="T2_y" value="208976.339"/>
+  <arg name="T2_z" value="-3884.820"/>
+  <arg name="T3_x" value="94343.087"/>
+  <arg name="T3_y" value="208950.334"/>
+  <arg name="T3_z" value="-3884.838"/> -->
 
   <arg name="gnss_fix_type" value="0"/> <!-- 0:uwb , 1:ublox , 2:novatel-->
-  <arg name="odometer" value="0"/> <!-- 0:off , 1:odometer, 2:GNSS speed-->
+  <arg name="odometer" value="1"/> <!-- 0:off , 1:odometer, 2:GNSS speed-->
   <arg name="fix_mode" value="1"/> <!-- 0:test mode , 1:fusion mode-->
-  <arg name="body_frame" value="0"/> <!-- 0:enu , 1:nwu-->
+  <arg name="body_frame" value="1"/> <!-- 0:enu , 1:nwu-->
   <!-- GNSS Antenna in b-frame-->
   <arg name="antenna_x" value="0.00"/>
   <arg name="antenna_y" value="0.25"/>
